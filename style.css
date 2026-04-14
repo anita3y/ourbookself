@@ -393,8 +393,100 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.your-shelf-section { margin-bottom: 3rem; }
-.community-section { }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.section-header .section-title, 
+.section-header .section-sub {
+  margin-bottom: 0.2rem;
+}
+
+/* VIEW TOGGLE */
+.view-toggle {
+  display: flex;
+  background: #EAEAEA;
+  padding: 4px;
+  border-radius: 50px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 50px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  color: var(--text-dark);
+}
+
+/* MAP CANVAS */
+#taste-map-canvas {
+  width: 100%;
+  height: 600px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+.map-node {
+  cursor: pointer;
+}
+
+.node-group:hover .node-circle {
+  stroke-width: 3px;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+
+.node-label {
+  font-size: 0.75rem;
+  fill: var(--text-mid);
+  pointer-events: none;
+}
+
+/* TOOLTIP */
+.map-tooltip {
+  position: absolute;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-hover);
+  pointer-events: none;
+  font-size: 0.8rem;
+  z-index: 1000;
+  min-width: 150px;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.tooltip-pick {
+  display: block;
+  color: var(--text-mid);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
 
 /* SHELF CARD (shared for own + others) */
 .shelf-card {

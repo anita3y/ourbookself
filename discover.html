@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body class="discover-page">
 
@@ -28,12 +29,26 @@
       </div>
     </section>
 
-    <!-- Community feed -->
     <section class="community-section">
-      <h2 class="section-title">the community</h2>
-      <p class="section-sub">See how your taste compares to everyone else.</p>
-      <div class="discover-feed" id="discover-feed">
-        <!-- Populated by JS -->
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">the community</h2>
+          <p class="section-sub">See how your taste compares to everyone else.</p>
+        </div>
+        <div class="view-toggle">
+          <button class="toggle-btn active" id="view-list">List View</button>
+          <button class="toggle-btn" id="view-map">Taste Map</button>
+        </div>
+      </div>
+      
+      <div id="list-view">
+        <div class="discover-feed" id="discover-feed">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div id="map-view" class="hidden">
+        <div id="taste-map-canvas"></div>
       </div>
     </section>
   </main>
