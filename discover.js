@@ -38,6 +38,7 @@ async function loadCommunity() {
 
   const snapshot = await getDocs(collection(db, "users"));
   const users = [];
+  allUsers = []; // Clear previous
 
   snapshot.forEach(docSnap => {
     const data = docSnap.data();
