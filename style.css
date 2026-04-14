@@ -209,8 +209,6 @@ body {
 }
 
 .step-icon { font-size: 2.5rem; margin-bottom: 1rem; }
-.your-shelf-section { margin-bottom: 5rem; }
-
 .step-title {
   font-size: 2rem;
   font-weight: 400;
@@ -377,6 +375,10 @@ body {
   max-width: 900px;
   margin: 0 auto;
   padding: 8rem 2rem 4rem;
+}
+
+.your-shelf-section {
+  margin-bottom: 5rem;
 }
 
 .section-title {
