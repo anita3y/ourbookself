@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Bookshelf — Share Your Taste</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="landing-page">
+
+  <nav class="top-nav">
+    <span class="logo">our bookshelf</span>
+  </nav>
+
+  <main class="landing-hero">
+    <div class="landing-content">
+      <h1 class="landing-title">your taste,<br>shared.</h1>
+      <p class="landing-subtitle">Pick your favorite movie, album, and book.<br>See who matches your vibe.</p>
+      
+      <button id="google-signin-btn" class="google-btn">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20">
+        Continue with Google
+      </button>
+    </div>
+
+    <!-- Floating preview cards -->
+    <div class="preview-cards">
+      <div class="preview-card float-1">
+        <div class="preview-cover" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+        <div class="preview-info">
+          <span class="preview-category">Movie</span>
+          <span class="preview-title">Lost in Translation</span>
+        </div>
+      </div>
+      <div class="preview-card float-2">
+        <div class="preview-cover" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+        <div class="preview-info">
+          <span class="preview-category">Album</span>
+          <span class="preview-title">Charm — Clairo</span>
+        </div>
+      </div>
+      <div class="preview-card float-3">
+        <div class="preview-cover" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+        <div class="preview-info">
+          <span class="preview-category">Book</span>
+          <span class="preview-title">A Room of One's Own</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // If already logged in, redirect appropriately
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists() && userDoc.data().onboarded) {
+            window.location.href = "discover.html";
+          } else {
+            window.location.href = "onboarding.html";
+          }
+        } catch (err) {
+          // Firestore not set up yet or network error — go to onboarding
+          console.warn("Firestore check failed, redirecting to onboarding:", err);
+          window.location.href = "onboarding.html";
+        }
+      }
+    });
+
+    document.getElementById('google-signin-btn').addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error("Sign in error:", err);
+      }
+    });
+  </script>
+
+</body>
+</html>

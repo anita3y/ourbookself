@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Bookshelf — Discover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="discover-page">
+
+  <nav class="top-nav">
+    <span class="logo">our bookshelf</span>
+    <div class="nav-right">
+      <button class="nav-link" onclick="window.location.href='profile.html'">my shelf</button>
+      <button class="sign-out-btn" id="sign-out-btn">sign out</button>
+    </div>
+  </nav>
+
+  <main class="discover-container">
+    <!-- Your own shelf card at the top -->
+    <section class="your-shelf-section">
+      <h2 class="section-title">your shelf</h2>
+      <div class="shelf-card own-card" id="own-shelf-card">
+        <!-- Populated by JS -->
+        <div class="shelf-loading">loading your picks…</div>
+      </div>
+    </section>
+
+    <!-- Community feed -->
+    <section class="community-section">
+      <h2 class="section-title">the community</h2>
+      <p class="section-sub">See how your taste compares to everyone else.</p>
+      <div class="discover-feed" id="discover-feed">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="discover.js"></script>
+</body>
+</html>

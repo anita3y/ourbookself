@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Bookshelf — Set Up Your Shelf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="onboarding-page">
+
+  <nav class="top-nav">
+    <span class="logo">our bookshelf</span>
+    <span class="step-indicator" id="step-indicator">1 of 3</span>
+  </nav>
+
+  <main class="onboarding-container">
+
+    <!-- STEP 1: MOVIE -->
+    <section class="onboarding-step active" id="step-movie">
+      <div class="step-icon">🎬</div>
+      <h2 class="step-title">What's your favorite movie?</h2>
+      <p class="step-sub">Search any film — pick the one that defines you.</p>
+      <div class="search-wrapper">
+        <input type="text" id="movie-search" class="search-input" placeholder="Search movies..." autocomplete="off">
+        <div class="search-results hidden" id="movie-results"></div>
+      </div>
+      <div class="selected-preview hidden" id="movie-selected">
+        <div class="selected-cover" id="movie-cover"></div>
+        <div class="selected-info">
+          <span class="selected-label">Movie</span>
+          <span class="selected-name" id="movie-name"></span>
+          <span class="selected-meta" id="movie-meta"></span>
+        </div>
+        <button class="change-btn" id="movie-change">change</button>
+      </div>
+      <button class="next-btn hidden" id="movie-next">Next →</button>
+    </section>
+
+    <!-- STEP 2: ALBUM -->
+    <section class="onboarding-step" id="step-album">
+      <div class="step-icon">🎵</div>
+      <h2 class="step-title">What's your favorite album?</h2>
+      <p class="step-sub">The record you could listen to forever.</p>
+      <div class="search-wrapper">
+        <input type="text" id="album-search" class="search-input" placeholder="Search albums..." autocomplete="off">
+        <div class="search-results hidden" id="album-results"></div>
+      </div>
+      <div class="selected-preview hidden" id="album-selected">
+        <div class="selected-cover" id="album-cover"></div>
+        <div class="selected-info">
+          <span class="selected-label">Album</span>
+          <span class="selected-name" id="album-name"></span>
+          <span class="selected-meta" id="album-meta"></span>
+        </div>
+        <button class="change-btn" id="album-change">change</button>
+      </div>
+      <button class="next-btn hidden" id="album-next">Next →</button>
+    </section>
+
+    <!-- STEP 3: BOOK -->
+    <section class="onboarding-step" id="step-book">
+      <div class="step-icon">📖</div>
+      <h2 class="step-title">What's your favorite book?</h2>
+      <p class="step-sub">The one you'd recommend to everyone.</p>
+      <div class="search-wrapper">
+        <input type="text" id="book-search" class="search-input" placeholder="Search books..." autocomplete="off">
+        <div class="search-results hidden" id="book-results"></div>
+      </div>
+      <div class="selected-preview hidden" id="book-selected">
+        <div class="selected-cover" id="book-cover"></div>
+        <div class="selected-info">
+          <span class="selected-label">Book</span>
+          <span class="selected-name" id="book-name"></span>
+          <span class="selected-meta" id="book-meta"></span>
+        </div>
+        <button class="change-btn" id="book-change">change</button>
+      </div>
+      <button class="next-btn hidden" id="book-next">Finish & See My Shelf ✨</button>
+    </section>
+
+  </main>
+
+  <script type="module" src="onboarding.js"></script>
+</body>
+</html>
