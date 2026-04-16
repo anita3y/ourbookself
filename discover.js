@@ -1,7 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
+
+// API Keys for backfilling
+const TMDB_KEY = "2dca580c2a14b55200e784d157207b4d";
+const LASTFM_KEY = "8814c3cc4bec8589e654f3c7e43618f3";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -46,6 +50,9 @@ async function loadCommunity() {
     if (data.uid === currentUser.uid) return; // skip self for list
     const score = calculateMatch(myPicks, data.picks);
     users.push({ ...data, score });
+
+    // Backfill in background if metadata is missing
+    attemptBackfill(data.uid, data.picks);
   });
 
   // Sort by match score descending
@@ -103,6 +110,59 @@ function scoreCategory(item1, item2, personKey, groupKey, maxPoints) {
   else if (overlap === 1) partial += 5;
 
   return Math.min(maxPoints, partial);
+}
+
+// ========== AUTO-BACKFILL LOGIC (SELF-HEALING) ==========
+const backfillInProgress = new Set();
+
+async function attemptBackfill(uid, picks) {
+  if (!picks || backfillInProgress.has(uid)) return;
+
+  const needsMovie = picks.movie && (!picks.movie.director || !picks.movie.genres);
+  const needsAlbum = picks.album && !picks.album.tags;
+  const needsBook = picks.book && (!picks.book.author || !picks.book.subjects);
+
+  if (!needsMovie && !needsAlbum && !needsBook) return;
+
+  backfillInProgress.add(uid);
+  console.log(`[Backfill] Fixing incomplete profile for ${uid}...`);
+
+  try {
+    const updatedPicks = { ...picks };
+
+    if (needsMovie && picks.movie.tmdbId) {
+      const r = await fetch(`https://api.themoviedb.org/3/movie/${picks.movie.tmdbId}?api_key=${TMDB_KEY}&append_to_response=credits`);
+      const data = await r.json();
+      updatedPicks.movie.director = data.credits?.crew?.find(c => c.job === "Director")?.name || "";
+      updatedPicks.movie.genres = (data.genres || []).map(g => g.name);
+    }
+
+    if (needsAlbum && picks.album.artist) {
+      const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(picks.album.artist)}&album=${encodeURIComponent(picks.album.name)}&format=json`);
+      const data = await r.json();
+      updatedPicks.album.tags = (data.album?.tags?.tag || []).map(t => t.name);
+    }
+
+    if (needsBook && picks.book.id) {
+      // Extract key from id (format: ol_WORKS/OL...)
+      const key = picks.book.id.replace("ol_", "");
+      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(picks.book.name)}&limit=1&fields=author_name,subject`);
+      const data = await r.json();
+      if (data.docs?.[0]) {
+        updatedPicks.book.author = data.docs[0].author_name?.[0] || "";
+        updatedPicks.book.subjects = (data.docs[0].subject || []).slice(0, 5);
+      }
+    }
+
+    // Update Firestore
+    await updateDoc(doc(db, "users", uid), { picks: updatedPicks });
+    console.log(`[Backfill] Successfully updated ${uid}. Refresh to see score updates.`);
+
+  } catch (err) {
+    console.error(`[Backfill] Error updating ${uid}:`, err);
+  } finally {
+    backfillInProgress.delete(uid);
+  }
 }
 
 // ========== BUILD CARD HTML ==========
