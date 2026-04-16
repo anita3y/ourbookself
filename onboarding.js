@@ -139,7 +139,7 @@ async function getAlbumDetails(artist, album) {
 
 async function searchBooks(query) {
   try {
-    const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i`);
+    const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,subject`);
     const data = await r.json();
     return (data.docs || []).map(b => ({
       id: `ol_${b.key}`,
