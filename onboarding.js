@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 
 // API Keys
@@ -16,13 +16,25 @@ let picks = { movie: null, album: null, book: null };
 let currentStep = "intro";
 
 // Guard: must be logged in
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "index.html"; return; }
   currentUser = user;
-  initProfileStep();
+  
+  // Check if editing (fetch existing data)
+  const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+  if (userDoc.exists()) {
+    const data = userDoc.data();
+    if (data.picks) {
+      picks = data.picks;
+      prepopulateUI(data);
+    }
+    initProfileStep(data.name);
+  } else {
+    initProfileStep();
+  }
 });
 
-function initProfileStep() {
+function initProfileStep(existingName) {
   const photoContainer = document.getElementById("intro-profile-preview");
   const nameInput = document.getElementById("display-name-input");
   
@@ -32,8 +44,30 @@ function initProfileStep() {
     photoContainer.innerHTML = `<div class="intro-large-avatar" style="background:#EEE; display:flex; align-items:center; justify-content:center; font-size:2rem;">👤</div>`;
   }
   
-  nameInput.value = currentUser.displayName || "";
-  document.getElementById("welcome-text").textContent = `Welcome, ${currentUser.displayName?.split(" ")[0] || "there"}!`;
+  nameInput.value = existingName || currentUser.displayName || "";
+  document.getElementById("welcome-text").textContent = existingName ? "Welcome back!" : `Welcome, ${currentUser.displayName?.split(" ")[0] || "there"}!`;
+}
+
+function prepopulateUI(data) {
+  ["movie", "album", "book"].forEach(type => {
+    const item = data.picks[type];
+    if (item) {
+      const selectedEl = document.getElementById(`${type}-selected`);
+      const coverEl = document.getElementById(`${type}-cover`);
+      const nameEl = document.getElementById(`${type}-name`);
+      const metaEl = document.getElementById(`${type}-meta`);
+      const nextBtn = document.getElementById(`${type}-next`);
+
+      if (item.thumb) {
+        coverEl.innerHTML = `<img src="${item.thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`;
+      }
+      nameEl.textContent = item.name;
+      metaEl.textContent = item.meta;
+
+      selectedEl.classList.remove("hidden");
+      nextBtn.classList.remove("hidden");
+    }
+  });
 }
 
 // ========== STEP NAVIGATION ==========
