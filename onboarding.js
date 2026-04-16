@@ -42,10 +42,24 @@ async function searchMovies(query) {
   const data = await r.json();
   return (data.results || []).slice(0, 6).map(m => ({
     id: `tmdb_${m.id}`,
+    tmdbId: m.id,
     name: m.title,
     meta: m.release_date ? m.release_date.slice(0, 4) : "",
-    thumb: m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : null
+    thumb: m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : null,
+    genre_ids: m.genre_ids || []
   }));
+}
+
+async function getMovieDetails(tmdbId) {
+  try {
+    const r = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=credits`);
+    const data = await r.json();
+    const director = data.credits?.crew?.find(c => c.job === "Director")?.name || "";
+    const genres = (data.genres || []).map(g => g.name);
+    return { director, genres };
+  } catch (err) {
+    return { director: "", genres: [] };
+  }
 }
 
 async function searchAlbums(query) {
@@ -55,9 +69,21 @@ async function searchAlbums(query) {
   return albums.map(a => ({
     id: `lfm_${a.mbid || a.name}`,
     name: a.name,
+    artist: a.artist,
     meta: a.artist,
     thumb: a.image?.[1]?.["#text"] || null
   }));
+}
+
+async function getAlbumDetails(artist, album) {
+  try {
+    const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`);
+    const data = await r.json();
+    const tags = (data.album?.tags?.tag || []).map(t => t.name);
+    return { tags };
+  } catch (err) {
+    return { tags: [] };
+  }
 }
 
 async function searchBooks(query) {
@@ -67,8 +93,10 @@ async function searchBooks(query) {
     return (data.docs || []).map(b => ({
       id: `ol_${b.key}`,
       name: b.title,
+      author: b.author_name?.[0] || "",
       meta: b.author_name?.[0] || "",
-      thumb: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null
+      thumb: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+      subjects: (b.subject || []).slice(0, 5)
     }));
   } catch (err) {
     console.error("Book search error:", err);
@@ -102,8 +130,30 @@ function renderResults(containerId, results, onSelect) {
 }
 
 // ========== SELECT PICK ==========
-function selectPick(type, item) {
-  picks[type] = item;
+async function selectPick(type, item) {
+  // Show loading on next button
+  const nextBtn = document.getElementById(`${type}-next`);
+  nextBtn.textContent = "Fetching details…";
+  nextBtn.disabled = true;
+  nextBtn.classList.remove("hidden");
+
+  let enrichedItem = { ...item };
+
+  // Fetch extra metadata
+  if (type === "movie" && item.tmdbId) {
+    const details = await getMovieDetails(item.tmdbId);
+    enrichedItem.director = details.director;
+    enrichedItem.genres = details.genres;
+  } else if (type === "album") {
+    const details = await getAlbumDetails(item.artist, item.name);
+    enrichedItem.tags = details.tags;
+  }
+
+  picks[type] = enrichedItem;
+
+  // Reset next button
+  nextBtn.textContent = type === "book" ? "Finish & See My Shelf ✨" : "Next →";
+  nextBtn.disabled = false;
 
   // Hide search, show selected preview
   document.getElementById(`${type}-results`).classList.add("hidden");
@@ -114,14 +164,13 @@ function selectPick(type, item) {
   const nameEl = document.getElementById(`${type}-name`);
   const metaEl = document.getElementById(`${type}-meta`);
 
-  if (item.thumb) {
-    coverEl.innerHTML = `<img src="${item.thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`;
+  if (enrichedItem.thumb) {
+    coverEl.innerHTML = `<img src="${enrichedItem.thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`;
   }
-  nameEl.textContent = item.name;
-  metaEl.textContent = item.meta;
+  nameEl.textContent = enrichedItem.name;
+  metaEl.textContent = enrichedItem.meta;
 
   selectedEl.classList.remove("hidden");
-  document.getElementById(`${type}-next`).classList.remove("hidden");
 }
 
 // ========== WIRE SEARCH INPUTS ==========

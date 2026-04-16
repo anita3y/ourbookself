@@ -65,13 +65,44 @@ async function loadCommunity() {
 }
 
 // ========== MATCH ALGORITHM ==========
-function calculateMatch(myPicks, theirPicks) {
-  if (!myPicks || !theirPicks) return 0;
-  let score = 0;
-  if (myPicks.movie?.id === theirPicks.movie?.id) score += 33;
-  if (myPicks.album?.id === theirPicks.album?.id) score += 34;
-  if (myPicks.book?.id === theirPicks.book?.id) score += 33;
-  return score;
+function calculateMatch(p1, p2) {
+  if (!p1 || !p2) return 0;
+  let totalScore = 0;
+
+  // 1. Movies (Max 33)
+  totalScore += scoreCategory(p1.movie, p2.movie, "director", "genres", 33);
+  
+  // 2. Albums (Max 34)
+  totalScore += scoreCategory(p1.album, p2.album, "artist", "tags", 34);
+
+  // 3. Books (Max 33)
+  totalScore += scoreCategory(p1.book, p2.book, "author", "subjects", 33);
+
+  return Math.round(totalScore);
+}
+
+function scoreCategory(item1, item2, personKey, groupKey, maxPoints) {
+  if (!item1 || !item2) return 0;
+
+  // Tier 1: Exact Match
+  if (item1.id === item2.id) return maxPoints;
+
+  let partial = 0;
+
+  // Tier 2: Same Creator (Director/Artist/Author)
+  if (item1[personKey] && item1[personKey] === item2[personKey]) {
+    partial += 15;
+  }
+
+  // Tier 3: Shared Genres/Tags/Subjects
+  const g1 = item1[groupKey] || [];
+  const g2 = item2[groupKey] || [];
+  const overlap = g1.filter(x => g2.includes(x)).length;
+
+  if (overlap >= 2) partial += 10;
+  else if (overlap === 1) partial += 5;
+
+  return Math.min(maxPoints, partial);
 }
 
 // ========== BUILD CARD HTML ==========
