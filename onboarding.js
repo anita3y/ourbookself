@@ -13,13 +13,28 @@ const db = getFirestore(app);
 
 let currentUser = null;
 let picks = { movie: null, album: null, book: null };
-let currentStep = "movie";
+let currentStep = "intro";
 
 // Guard: must be logged in
 onAuthStateChanged(auth, (user) => {
   if (!user) { window.location.href = "index.html"; return; }
   currentUser = user;
+  initProfileStep();
 });
+
+function initProfileStep() {
+  const photoContainer = document.getElementById("intro-profile-preview");
+  const nameInput = document.getElementById("display-name-input");
+  
+  if (currentUser.photoURL) {
+    photoContainer.innerHTML = `<img src="${currentUser.photoURL}" class="intro-large-avatar" alt="">`;
+  } else {
+    photoContainer.innerHTML = `<div class="intro-large-avatar" style="background:#EEE; display:flex; align-items:center; justify-content:center; font-size:2rem;">👤</div>`;
+  }
+  
+  nameInput.value = currentUser.displayName || "";
+  document.getElementById("welcome-text").textContent = `Welcome, ${currentUser.displayName?.split(" ")[0] || "there"}!`;
+}
 
 // ========== STEP NAVIGATION ==========
 function goToStep(step) {
@@ -27,9 +42,11 @@ function goToStep(step) {
   document.querySelectorAll(".onboarding-step").forEach(s => s.classList.remove("active"));
   document.getElementById(`step-${step}`).classList.add("active");
 
-  const stepMap = { movie: "1", album: "2", book: "3" };
-  document.getElementById("step-indicator").textContent = `${stepMap[step]} of 3`;
+  const stepMap = { intro: "1", movie: "2", album: "3", book: "4" };
+  document.getElementById("step-indicator").textContent = `${stepMap[step]} of 4`;
 }
+
+document.getElementById("intro-next").addEventListener("click", () => goToStep("movie"));
 
 // ========== SEARCH HELPERS ==========
 function debounce(fn, delay) {
@@ -210,10 +227,12 @@ document.getElementById("book-next").addEventListener("click", async () => {
   document.getElementById("book-next").textContent = "Saving…";
   document.getElementById("book-next").disabled = true;
 
+  const displayName = document.getElementById("display-name-input").value.trim() || currentUser.displayName || "Anonymous";
+
   try {
     await setDoc(doc(db, "users", currentUser.uid), {
       uid: currentUser.uid,
-      name: currentUser.displayName,
+      name: displayName,
       email: currentUser.email,
       photo: currentUser.photoURL,
       picks: picks,

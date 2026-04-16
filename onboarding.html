@@ -12,13 +12,28 @@
 
   <nav class="top-nav">
     <span class="logo">our bookshelf</span>
-    <span class="step-indicator" id="step-indicator">1 of 3</span>
+    <span class="step-indicator" id="step-indicator">1 of 4</span>
   </nav>
 
   <main class="onboarding-container">
 
+    <!-- STEP 0: INTRO -->
+    <section class="onboarding-step active" id="step-intro">
+      <div id="intro-profile-preview" class="intro-profile-group">
+        <!-- Google Photo will be injected here -->
+      </div>
+      <h2 class="step-title" id="welcome-text">Hi there!</h2>
+      <p class="step-sub">How should we call you on your bookshelf?</p>
+      
+      <div class="search-wrapper">
+        <input type="text" id="display-name-input" class="search-input" placeholder="Your Display Name" autocomplete="off">
+      </div>
+      
+      <button class="next-btn" id="intro-next">Let's go →</button>
+    </section>
+
     <!-- STEP 1: MOVIE -->
-    <section class="onboarding-step active" id="step-movie">
+    <section class="onboarding-step" id="step-movie">
       <div class="step-icon">🎬</div>
       <h2 class="step-title">What's your favorite movie?</h2>
       <p class="step-sub">Search any film — pick the one that defines you.</p>
