@@ -24,131 +24,136 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "index.html"; return; }
   currentUser = user;
   
-  const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-  if (!userDoc.exists()) { window.location.href = "onboarding.html"; return; }
+  try {
+    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+    if (!userDoc.exists()) { window.location.href = "onboarding.html"; return; }
 
-  myData = userDoc.data();
-  myPicks = myData.picks;
-  myCommunities = myData.communities || ["creative-computing-s26"];
+    myData = userDoc.data();
+    myPicks = myData.picks;
+    myCommunities = myData.communities || ["creative-computing-s26"];
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const inviteTag = urlParams.get('c');
+    // Clean up URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('c')) window.history.replaceState({}, document.title, "/discover.html");
 
-  // If visiting with a new invite link, add it to array
-  if (inviteTag && !myCommunities.includes(inviteTag)) {
-    myCommunities.push(inviteTag);
-    await updateDoc(doc(db, "users", currentUser.uid), { communities: myCommunities });
+    // Load UI components
+    await loadMyShelf();
+    await loadCommunity();
+  } catch (err) {
+    console.error("Critical Auth/Load Error:", err);
+    document.getElementById("own-shelf-wrapper").innerHTML = `<div class="shelf-loading">Error loading your shelf. Please try refreshing.</div>`;
   }
-
-  // Determine active community
-  activeCommunity = inviteTag || (myCommunities.includes("creative-computing-s26") ? "creative-computing-s26" : myCommunities[0]);
-  if (inviteTag) window.history.replaceState({}, document.title, "/discover.html");
-
-  await loadCommunitySwitcher();
-  await loadMyShelf();
-  await loadCommunity();
 });
+
+// ========== IMAGE QUALITY REPAIR ==========
+function repairImageURL(url) {
+  if (!url || typeof url !== 'string') return url;
+  let newUrl = url;
+  
+  try {
+    // TMDB
+    if (newUrl.includes("tmdb.org/t/p/")) {
+      newUrl = newUrl.replace(/\/w(92|154|185|200|300|342)\//, "/w500/");
+    }
+    // Last.fm
+    if (newUrl.includes("lastfm.freetls.fastly.net/i/u/")) {
+      newUrl = newUrl.replace(/\/i\/u\/[^\/]+\//, "/i/u/_/");
+    }
+    // OpenLibrary
+    if (newUrl.includes("covers.openlibrary.org") && newUrl.includes("-M.jpg")) {
+      newUrl = newUrl.replace("-M.jpg", "-L.jpg");
+    }
+  } catch (e) { console.error("Repair error", e); }
+  
+  return newUrl;
+}
 
 // ========== LOAD OWN SHELF ==========
 async function loadMyShelf() {
-  const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-  if (!userDoc.exists()) { window.location.href = "onboarding.html"; return; }
+  if (!myData || !myPicks) return;
 
-  myData = userDoc.data();
-  myPicks = myData.picks;
-
-  // High-Res Repair: Upgrade old low-res URLs in the background
+  // High-Res Repair
   let needsRepair = false;
-  const p = myPicks;
-  if (p.movie?.thumb && (p.movie.thumb.includes("/w92/") || p.movie.thumb.includes("/w200/"))) {
-    p.movie.thumb = p.movie.thumb.replace("/w92/", "/w500/").replace("/w200/", "/w500/");
-    needsRepair = true;
+  const p = { ...myPicks }; // Clone to avoid mutation issues during repair
+  
+  if (p.movie?.thumb) {
+    const fixed = repairImageURL(p.movie.thumb);
+    if (fixed !== p.movie.thumb) { p.movie.thumb = fixed; needsRepair = true; }
   }
-  if (p.book?.thumb && p.book.thumb.includes("-M.jpg")) {
-    p.book.thumb = p.book.thumb.replace("-M.jpg", "-L.jpg");
-    needsRepair = true;
+  if (p.album?.thumb) {
+    const fixed = repairImageURL(p.album.thumb);
+    if (fixed !== p.album.thumb) { p.album.thumb = fixed; needsRepair = true; }
   }
+  if (p.book?.thumb) {
+    const fixed = repairImageURL(p.book.thumb);
+    if (fixed !== p.book.thumb) { p.book.thumb = fixed; needsRepair = true; }
+  }
+  
   if (needsRepair) {
-    await updateDoc(doc(db, "users", currentUser.uid), { picks: p });
-    console.log("Upgraded picks to high-res");
-  }
-
-  // Self-migration
-  if (!myData.communities || myData.communities.length === 0) {
-    myData.communities = ["creative-computing-s26"];
-    myCommunities = ["creative-computing-s26"];
-    await updateDoc(doc(db, "users", currentUser.uid), { communities: ["creative-computing-s26"] });
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), { picks: p });
+      myPicks = p;
+      myData.picks = p;
+    } catch (e) { console.warn("Background repair update failed", e); }
   }
 
   const card = document.getElementById("own-shelf-wrapper");
-  card.innerHTML = buildShelfCardHTML(myData, null);
+  if (card) card.innerHTML = buildShelfCardHTML(myData, null);
 }
 
 // ========== LOAD COMMUNITY ==========
 async function loadCommunity() {
   const feed = document.getElementById("discover-feed");
+  if (!feed) return;
   feed.innerHTML = `<div class="shelf-loading">loading community…</div>`;
 
-  const q = query(
-    collection(db, "users"),
-    where("communities", "array-contains", activeCommunity),
-    orderBy("createdAt", "desc")
-  );
-  
-  let snapshot;
   try {
-    snapshot = await getDocs(q);
-    // If the filtered snapshot returns 0 results, it likely means the index
-    // doesn't exist OR no one has the communities field yet — fall back
-    if (snapshot.empty && activeCommunity === "creative-computing-s26") {
-      throw new Error("Empty — triggering legacy fallback");
+    // GLOBAL: Fetch all users. We try with order, but fallback if it fails
+    let q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+    let snapshot;
+    try {
+      snapshot = await getDocs(q);
+    } catch (e) {
+      console.warn("Ordered query failed, falling back to unordered", e);
+      q = query(collection(db, "users"));
+      snapshot = await getDocs(q);
     }
-  } catch(e) {
-    console.warn("Community index query failed, using legacy fallback:", e.message);
-    // Legacy fallback: fetch all users, treat those with NO communities field
-    // as belonging to creative-computing-s26 (pre-migration users)
-    const fallbackQ = query(collection(db, "users"), orderBy("createdAt", "desc"));
-    const allSnaps = await getDocs(fallbackQ);
-    snapshot = { 
-      docs: allSnaps.docs.filter(d => {
-        const data = d.data();
-        const communities = data.communities;
-        // Legacy users (no communities field) belong to creative-computing-s26
-        if (!communities || communities.length === 0) return activeCommunity === "creative-computing-s26";
-        return communities.includes(activeCommunity);
-      }),
-      forEach: function(fn) { this.docs.forEach(fn); }
-    };
+
+    let users = [];
+    allUsers = [];
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      allUsers.push(data);
+      if (data.uid === currentUser.uid) return;
+      users.push({ ...data, score: "Analyzing..." });
+    });
+
+    feed.innerHTML = "";
+    if (users.length === 0) {
+      feed.innerHTML = `<div class="shelf-loading">No one else has joined yet! 🎉</div>`;
+      return;
+    }
+
+    users.forEach(user => {
+      if (user.picks) {
+        if (user.picks.movie?.thumb) user.picks.movie.thumb = repairImageURL(user.picks.movie.thumb);
+        if (user.picks.album?.thumb) user.picks.album.thumb = repairImageURL(user.picks.album.thumb);
+        if (user.picks.book?.thumb) user.picks.book.thumb = repairImageURL(user.picks.book.thumb);
+      }
+      const el = document.createElement("div");
+      el.innerHTML = buildShelfCardHTML(user, user.score);
+      feed.appendChild(el.firstElementChild);
+    });
+
+    // Start background scoring
+    // Start background scoring
+    calculateAllMatches(users);
+
+  } catch (err) {
+    console.error("Community load error:", err);
+    feed.innerHTML = `<div class="shelf-loading">Error loading community. Please refresh.</div>`;
   }
-
-  let users = [];
-  allUsers = [];
-
-  snapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    allUsers.push(data); // save all for map
-    if (data.uid === currentUser.uid) return; // skip self for list
-    users.push({ ...data, score: "Analyzing..." });
-  });
-
-  feed.innerHTML = "";
-  feed.classList.remove("fade-in");
-  void feed.offsetWidth; // trigger reflow
-  feed.classList.add("fade-in");
-  
-  if (users.length === 0) {
-    feed.innerHTML = `<div class="shelf-loading">No one else has joined yet — share the link with friends! 🎉</div>`;
-    return;
-  }
-
-  users.forEach(user => {
-    const el = document.createElement("div");
-    el.innerHTML = buildShelfCardHTML(user, user.score);
-    feed.appendChild(el.firstElementChild);
-  });
-  
-  // Fire off async AI batch scoring
-  fetchAIBatchScores(myPicks, users);
 }
 
 // ========== MATCH ALGORITHM ==========
@@ -672,18 +677,20 @@ async function fetchJointRecommendations(peerData, wrapper) {
     
     const makePick = (pick, label) => `
       <div class="shelf-pick">
-        ${pick?.thumb
-          ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="">`
-          : `<div class="shelf-pick-cover"></div>`}
+        <div class="shelf-pick-image-container">
+          ${pick?.thumb
+            ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="">`
+            : `<div class="shelf-pick-cover shelf-pick-cover--empty"></div>`}
+          <span class="shelf-pick-category-overlay">${label}</span>
+        </div>
         <div class="shelf-pick-tile">
-          <span class="shelf-pick-category">${label}</span>
           <span class="shelf-pick-title">${pick?.name || "—"}</span>
         </div>
       </div>`;
       
     wrapper.innerHTML = `
       <div class="joint-header">Recommendations for you both:</div>
-      <div class="shelf-picks" style="margin-top:0.5rem; width:100%">
+      <div class="shelf-picks">
         ${makePick({name: data.movie?.title, thumb: movieThumb}, "Movie")}
         ${makePick({name: data.album?.title, thumb: albumThumb}, "Album")}
         ${makePick({name: data.book?.title, thumb: bookThumb}, "Book")}
@@ -774,79 +781,11 @@ document.getElementById("close-info-btn")?.addEventListener("click", () => {
 });
 
 // ========== COMMUNITY SWITCHER & CREATION ==========
-async function loadCommunitySwitcher() {
-  const container = document.getElementById("community-tabs");
-  container.innerHTML = "";
-  
-  for (const tag of myCommunities) {
-    if (!communityDocs[tag]) {
-      const cDoc = await getDoc(doc(db, "communities", tag));
-      communityDocs[tag] = cDoc.exists() ? cDoc.data().name : tag;
-    }
-    const btn = document.createElement("button");
-    btn.className = "community-tab" + (tag === activeCommunity ? " active" : "");
-    btn.textContent = communityDocs[tag];
-    btn.addEventListener("click", () => {
-      activeCommunity = tag;
-      loadCommunity();
-      // Update active tab
-      container.querySelectorAll(".community-tab").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-    });
-    container.appendChild(btn);
-  }
+// MODAL HELPERS (If still needed for future or removing if unused)
+const createClose = document.getElementById("create-close");
+if (createClose) {
+  createClose.addEventListener("click", () => {
+    document.getElementById("create-modal").classList.add("hidden");
+  });
 }
 
-document.getElementById("invite-community-btn").addEventListener("click", () => {
-  const link = `${window.location.origin}/?c=${activeCommunity}`;
-  navigator.clipboard.writeText(link);
-  const btn = document.getElementById("invite-community-btn");
-  btn.textContent = "✓ Copied!";
-  setTimeout(() => btn.textContent = "🔗 Invite", 2000);
-});
-
-document.getElementById("create-community-btn").addEventListener("click", () => {
-  document.getElementById("create-modal").classList.remove("hidden");
-});
-
-document.getElementById("create-close").addEventListener("click", () => {
-  document.getElementById("create-modal").classList.add("hidden");
-});
-
-document.getElementById("submit-create-btn").addEventListener("click", async () => {
-  const name = document.getElementById("community-name-input").value.trim();
-  const msg = document.getElementById("create-msg");
-  if (!name) return;
-  
-  const btn = document.getElementById("submit-create-btn");
-  btn.disabled = true;
-  btn.textContent = "Creating...";
-  
-  const tag = name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.floor(Math.random() * 1000);
-  
-  try {
-    await setDoc(doc(db, "communities", tag), {
-      name: name,
-      hostEmail: currentUser.email,
-      createdAt: new Date().toISOString()
-    });
-    
-    myCommunities.push(tag);
-    await updateDoc(doc(db, "users", currentUser.uid), { communities: myCommunities });
-    
-    communityDocs[tag] = name;
-    activeCommunity = tag;
-    await loadCommunitySwitcher();
-    await loadCommunity();
-    
-    const link = `${window.location.origin}/?c=${tag}`;
-    navigator.clipboard.writeText(link);
-    msg.innerHTML = `Created! Invite link copied to clipboard:<br><a href="${link}">${link}</a>`;
-    btn.textContent = "Create & Get Invite Link";
-    btn.disabled = false;
-  } catch (e) {
-    msg.style.color = "red";
-    msg.textContent = e.message;
-    btn.disabled = false;
-  }
-});

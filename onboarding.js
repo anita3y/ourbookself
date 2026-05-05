@@ -143,9 +143,10 @@ async function getMovieDetails(tmdbId) {
     const data = await r.json();
     const director = data.credits?.crew?.find(c => c.job === "Director")?.name || "";
     const genres = (data.genres || []).map(g => g.name);
-    return { director, genres };
+    const thumb = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null;
+    return { director, genres, thumb };
   } catch (err) {
-    return { director: "", genres: [] };
+    return { director: "", genres: [], thumb: null };
   }
 }
 
@@ -175,9 +176,19 @@ async function getAlbumDetails(artist, album) {
     const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`);
     const data = await r.json();
     const tags = (data.album?.tags?.tag || []).map(t => t.name);
-    return { tags };
+    let thumb = null;
+    const imgList = data.album?.image;
+    if (imgList && imgList.length > 0) {
+      const preferred = ["mega", "extralarge", "large"];
+      for (const size of preferred) {
+        const found = imgList.find(i => i.size === size);
+        if (found && found["#text"]) { thumb = found["#text"]; break; }
+      }
+      if (!thumb) thumb = imgList[imgList.length - 1]["#text"];
+    }
+    return { tags, thumb };
   } catch (err) {
-    return { tags: [] };
+    return { tags: [], thumb: null };
   }
 }
 
@@ -239,9 +250,11 @@ async function selectPick(type, item) {
     const details = await getMovieDetails(item.tmdbId);
     enrichedItem.director = details.director;
     enrichedItem.genres = details.genres;
+    if (details.thumb) enrichedItem.thumb = details.thumb;
   } else if (type === "album") {
     const details = await getAlbumDetails(item.artist, item.name);
     enrichedItem.tags = details.tags;
+    if (details.thumb) enrichedItem.thumb = details.thumb;
   }
 
   picks[type] = enrichedItem;
