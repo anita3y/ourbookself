@@ -630,8 +630,13 @@ async function fetchJointRecommendations(peerData, wrapper) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "meta/meta-llama-3-8b-instruct",
-        input: { prompt: prompt, max_new_tokens: 1024, temperature: 0.7 }
+        model: "meta/meta-llama-3-70b-instruct",
+        input: { 
+          prompt: prompt,
+          max_new_tokens: 1024,
+          temperature: 0.7,
+          system_prompt: "You are a specialized media recommendation engine. You ONLY output raw JSON. Never include explanations outside the JSON object. Never use markdown code blocks."
+        }
       })
     });
     
@@ -744,8 +749,13 @@ Instructions:
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "meta/meta-llama-3-8b-instruct",
-        input: { prompt: prompt, max_new_tokens: 1024, temperature: 0.3 }
+        model: "meta/meta-llama-3-70b-instruct",
+        input: { 
+          prompt: prompt,
+          max_new_tokens: 1024,
+          temperature: 0.2,
+          system_prompt: "You are a specialized compatibility scoring engine. You ONLY output raw JSON. Never include explanations. Respond strictly with a JSON object mapping IDs to scores."
+        }
       })
     });
     
