@@ -621,14 +621,17 @@ async function fetchJointRecommendations(peerData, wrapper) {
     const p1 = myPicks || {};
     const p2 = peerData.picks || {};
     
-    const prompt = `You are a media recommendation AI. User A likes the movie '${p1.movie?.name || "none"}', album '${p1.album?.name || "none"}', and book '${p1.book?.name || "none"}'. User B likes the movie '${p2.movie?.name || "none"}', album '${p2.album?.name || "none"}', and book '${p2.book?.name || "none"}'. Recommend 1 new movie, 1 new album, and 1 new book they would BOTH enjoy together. Respond strictly with a JSON object in this format: {"movie": {"title": "...", "director": "..."}, "album": {"title": "...", "artist": "..."}, "book": {"title": "...", "author": "..."}, "explanation": "A short 2-3 sentence explanation of why these match their combined tastes."}. Output only the JSON object, nothing else.`;
+    const prompt = `You are a media recommendation AI. User A likes: Movie: '${p1.movie?.name}', Album: '${p1.album?.name}', Book: '${p1.book?.name}'. User B likes: Movie: '${p2.movie?.name}', Album: '${p2.album?.name}', Book: '${p2.book?.name}'. 
+    Recommend 1 new movie, 1 new album, and 1 new book they would BOTH enjoy. 
+    Respond ONLY with a raw JSON object. NO backticks, NO markdown, NO preamble.
+    Format: {"movie": {"title": "...", "director": "..."}, "album": {"title": "...", "artist": "..."}, "book": {"title": "...", "author": "..."}, "explanation": "..."}`;
 
     const response = await fetch("https://itp-ima-replicate-proxy.web.app/api/create_n_get", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "meta/meta-llama-3-8b-instruct",
-        input: { prompt: prompt, max_new_tokens: 512, temperature: 0.7 }
+        input: { prompt: prompt, max_new_tokens: 1024, temperature: 0.7 }
       })
     });
     
@@ -637,14 +640,24 @@ async function fetchJointRecommendations(peerData, wrapper) {
     const result = await response.json();
     let outputStr = result.output.join("");
     
-    // Robust JSON extraction
+    // Robust extraction & Auto-Repair
     const firstBrace = outputStr.indexOf("{");
     const lastBrace = outputStr.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1) {
       outputStr = outputStr.substring(firstBrace, lastBrace + 1);
     }
     
-    const data = JSON.parse(outputStr);
+    let data;
+    try {
+      data = JSON.parse(outputStr);
+    } catch (e) {
+      // Try a simple repair: add missing brace if truncated
+      try {
+        data = JSON.parse(outputStr + '"}');
+      } catch (e2) {
+        throw new Error("AI data error. Please try again!");
+      }
+    }
     
     // Fetch images
     let movieThumb = "", albumThumb = "", bookThumb = "";
@@ -732,7 +745,7 @@ Instructions:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "meta/meta-llama-3-8b-instruct",
-        input: { prompt: prompt, max_new_tokens: 512, temperature: 0.3 }
+        input: { prompt: prompt, max_new_tokens: 1024, temperature: 0.3 }
       })
     });
     
