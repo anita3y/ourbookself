@@ -55,8 +55,9 @@ function repairImageURL(url) {
     if (newUrl.includes("tmdb.org/t/p/")) {
       newUrl = newUrl.replace(/\/w(92|154|185|200|300|342)\//, "/w500/");
     }
-    // Last.fm
-    if (newUrl.includes("lastfm.freetls.fastly.net/i/u/")) {
+    // Last.fm: Upgrade ANY size segment to the original high-res version
+    // Only replace if it's NOT already the original quality (_)
+    if (newUrl.includes("lastfm.freetls.fastly.net/i/u/") && !newUrl.includes("/i/u/_/")) {
       newUrl = newUrl.replace(/\/i\/u\/[^\/]+\//, "/i/u/_/");
     }
     // OpenLibrary
@@ -279,7 +280,7 @@ function buildShelfCardHTML(userData, matchScore) {
     <div class="shelf-pick">
       <div class="shelf-pick-image-container">
         ${pick?.thumb
-          ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="">`
+          ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="" onerror="this.outerHTML='<div class=\\'shelf-pick-cover shelf-pick-cover--empty\\'></div>'">`
           : `<div class="shelf-pick-cover shelf-pick-cover--empty"></div>`}
         <span class="shelf-pick-category-overlay">${label}</span>
       </div>
@@ -683,7 +684,7 @@ async function fetchJointRecommendations(peerData, wrapper) {
       <div class="shelf-pick">
         <div class="shelf-pick-image-container">
           ${pick?.thumb
-            ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="">`
+            ? `<img class="shelf-pick-cover" src="${pick.thumb}" alt="" onerror="this.outerHTML='<div class=\\'shelf-pick-cover shelf-pick-cover--empty\\'></div>'">`
             : `<div class="shelf-pick-cover shelf-pick-cover--empty"></div>`}
           <span class="shelf-pick-category-overlay">${label}</span>
         </div>

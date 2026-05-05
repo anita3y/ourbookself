@@ -598,6 +598,16 @@ body {
   width: 100%;
   height: 100%;
   background: var(--bg-warm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.shelf-pick-cover--empty::after {
+  content: "✕";
+  font-size: 1.5rem;
+  color: var(--text-light);
+  opacity: 0.3;
 }
 
 .shelf-pick-category-overlay {
