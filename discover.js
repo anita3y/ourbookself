@@ -147,8 +147,7 @@ async function loadCommunity() {
     });
 
     // Start background scoring
-    // Start background scoring
-    calculateAllMatches(users);
+    fetchAIBatchScores(myPicks, users);
 
   } catch (err) {
     console.error("Community load error:", err);
