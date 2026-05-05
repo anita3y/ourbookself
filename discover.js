@@ -55,10 +55,10 @@ function repairImageURL(url) {
     if (newUrl.includes("tmdb.org/t/p/")) {
       newUrl = newUrl.replace(/\/w(92|154|185|200|300|342)\//, "/w500/");
     }
-    // Last.fm: Upgrade ANY size segment to the original high-res version
-    // Only replace if it's NOT already the original quality (_)
-    if (newUrl.includes("lastfm.freetls.fastly.net/i/u/") && !newUrl.includes("/i/u/_/")) {
-      newUrl = newUrl.replace(/\/i\/u\/[^\/]+\//, "/i/u/_/");
+    // Last.fm: Only upgrade tiny thumbnails to a standard large size (300x300)
+    // We avoid the '/_/' hack because it breaks for some smaller uploads (like 1989)
+    if (newUrl.includes("lastfm.freetls.fastly.net/i/u/")) {
+      newUrl = newUrl.replace(/\/i\/u\/(34s|64s|174s)\//, "/i/u/300x300/");
     }
     // OpenLibrary
     if (newUrl.includes("covers.openlibrary.org") && newUrl.includes("-M.jpg")) {
@@ -692,9 +692,13 @@ async function fetchJointRecommendations(peerData, wrapper) {
         }
       }
       if (data.book?.title) {
-        const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(data.book.title)}&limit=1&fields=cover_i`);
+        // Search with title and author for better accuracy
+        const q = `${data.book.title} ${data.book.author || ""}`.trim();
+        const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=1&fields=cover_i`);
         const rData = await r.json();
-        if (rData.docs?.[0]?.cover_i) bookThumb = `https://covers.openlibrary.org/b/id/${rData.docs[0].cover_i}-L.jpg`;
+        if (rData.docs?.[0]?.cover_i) {
+          bookThumb = `https://covers.openlibrary.org/b/id/${rData.docs[0].cover_i}-L.jpg`;
+        }
       }
     } catch (e) { console.warn("Failed fetching thumbs", e); }
     
