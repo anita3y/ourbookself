@@ -233,22 +233,26 @@ body {
   font-size: 0.95rem;
   margin-bottom: 1.5rem;
 }
+.search-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
 .search-input {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
+  padding: 14px 20px;
+  border-radius: 12px;
   border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  backdrop-filter: var(--blur);
+  background: var(--bg);
   color: var(--text-dark);
   font-family: inherit;
   font-size: 1rem;
   outline: none;
-  transition: border 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
 }
 .search-input:focus {
   border-color: var(--text-mid);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 
 /* ─── INTRO AVATAR ─── */
@@ -323,16 +327,42 @@ body {
   cursor: pointer;
   transition: background 0.15s;
 }
-.result-item:hover { background: var(--bg-warm); }
+.search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid var(--bg-warm);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover {
+  background: var(--bg-warm);
+}
 .result-thumb {
-  width: 40px; height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   object-fit: cover;
   background: var(--bg-warm);
   flex-shrink: 0;
 }
 .result-info { display: flex; flex-direction: column; gap: 2px; }
-.result-name { font-size: 0.9rem; font-weight: 500; color: var(--text-dark); }
+.result-name { font-size: 0.9rem; font-weight: 600; color: var(--text-dark); }
 .result-meta { font-size: 0.75rem; color: var(--text-mid); }
 
 .selected-preview {

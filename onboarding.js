@@ -224,7 +224,7 @@ function renderResults(containerId, results, onSelect) {
     el.className = "search-result-item";
     el.innerHTML = `
       ${item.thumb ? `<img class="result-thumb" src="${item.thumb}" alt="">` : `<div class="result-thumb"></div>`}
-      <div>
+      <div class="result-info">
         <div class="result-name">${item.name}</div>
         <div class="result-meta">${item.meta}</div>
       </div>
