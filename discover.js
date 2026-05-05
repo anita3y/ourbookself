@@ -636,8 +636,13 @@ async function fetchJointRecommendations(peerData, wrapper) {
     
     const result = await response.json();
     let outputStr = result.output.join("");
-    if (outputStr.includes("\`\`\`json")) outputStr = outputStr.split("\`\`\`json")[1].split("\`\`\`")[0].trim();
-    else if (outputStr.includes("\`\`\`")) outputStr = outputStr.split("\`\`\`")[1].split("\`\`\`")[0].trim();
+    
+    // Robust JSON extraction
+    const firstBrace = outputStr.indexOf("{");
+    const lastBrace = outputStr.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      outputStr = outputStr.substring(firstBrace, lastBrace + 1);
+    }
     
     const data = JSON.parse(outputStr);
     
@@ -735,8 +740,13 @@ Instructions:
     
     const result = await response.json();
     let outputStr = result.output.join("");
-    if (outputStr.includes("\`\`\`json")) outputStr = outputStr.split("\`\`\`json")[1].split("\`\`\`")[0].trim();
-    else if (outputStr.includes("\`\`\`")) outputStr = outputStr.split("\`\`\`")[1].split("\`\`\`")[0].trim();
+    
+    // Robust JSON extraction
+    const firstBrace = outputStr.indexOf("{");
+    const lastBrace = outputStr.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      outputStr = outputStr.substring(firstBrace, lastBrace + 1);
+    }
     
     const scores = JSON.parse(outputStr);
     
