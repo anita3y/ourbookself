@@ -15,6 +15,12 @@ let currentUser = null;
 let picks = { movie: null, album: null, book: null };
 let currentStep = "intro";
 
+const urlParams = new URLSearchParams(window.location.search);
+const inviteTag = urlParams.get('c');
+if (inviteTag) {
+  sessionStorage.setItem("inviteTag", inviteTag);
+}
+
 // Guard: must be logged in
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "index.html"; return; }
@@ -28,24 +34,53 @@ onAuthStateChanged(auth, async (user) => {
       picks = data.picks;
       prepopulateUI(data);
     }
-    initProfileStep(data.name);
+    initProfileStep(data);
   } else {
     initProfileStep();
   }
 });
 
-function initProfileStep(existingName) {
+function initProfileStep(data) {
   const photoContainer = document.getElementById("intro-profile-preview");
   const nameInput = document.getElementById("display-name-input");
+  const fileInput = document.getElementById("photo-file-input");
   
-  if (currentUser.photoURL) {
-    photoContainer.innerHTML = `<img src="${currentUser.photoURL}" class="intro-large-avatar" alt="">`;
-  } else {
-    photoContainer.innerHTML = `<div class="intro-large-avatar" style="background:#EEE; display:flex; align-items:center; justify-content:center; font-size:2rem;">👤</div>`;
-  }
-  
-  nameInput.value = existingName || currentUser.displayName || "";
-  document.getElementById("welcome-text").textContent = existingName ? "Welcome back!" : `Welcome, ${currentUser.displayName?.split(" ")[0] || "there"}!`;
+  const existingName = data?.name || currentUser.displayName || "";
+  let currentPhotoUrl = data?.photo || currentUser.photoURL || "";
+
+  nameInput.value = existingName;
+
+  const renderPreview = (url) => {
+    currentPhotoUrl = url;
+    photoContainer.innerHTML = `
+      <div class="avatar-edit-wrapper" id="avatar-edit-trigger" title="Change photo">
+        ${url
+          ? `<img src="${url}" class="intro-large-avatar" alt="">`
+          : `<div class="intro-large-avatar intro-large-avatar--empty">👤</div>`
+        }
+        <div class="avatar-edit-badge">✏️</div>
+      </div>`;
+    // Re-wire the click since innerHTML replaced the element
+    document.getElementById("avatar-edit-trigger").addEventListener("click", () => {
+      fileInput.click();
+    });
+  };
+
+  renderPreview(currentPhotoUrl);
+
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => renderPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  // Store getter so save step can read the current photo
+  window.__getProfilePhoto = () => currentPhotoUrl;
+
+  document.getElementById("welcome-text").textContent =
+    data?.name ? "Welcome back!" : `Welcome, ${currentUser.displayName?.split(" ")[0] || "there"}!`;
 }
 
 function prepopulateUI(data) {
@@ -59,7 +94,8 @@ function prepopulateUI(data) {
       const nextBtn = document.getElementById(`${type}-next`);
 
       if (item.thumb) {
-        coverEl.innerHTML = `<img src="${item.thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`;
+        coverEl.innerHTML = `<img src="${item.thumb}" alt="">`;
+        coverEl.classList.add("selected-cover");
       }
       nameEl.textContent = item.name;
       metaEl.textContent = item.meta;
@@ -96,7 +132,7 @@ async function searchMovies(query) {
     tmdbId: m.id,
     name: m.title,
     meta: m.release_date ? m.release_date.slice(0, 4) : "",
-    thumb: m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : null,
+    thumb: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
     genre_ids: m.genre_ids || []
   }));
 }
@@ -122,7 +158,15 @@ async function searchAlbums(query) {
     name: a.name,
     artist: a.artist,
     meta: a.artist,
-    thumb: a.image?.[1]?.["#text"] || null
+    thumb: (function() {
+      if (!a.image || a.image.length === 0) return null;
+      const preferred = ["mega", "extralarge", "large"];
+      for (const size of preferred) {
+        const found = a.image.find(i => i.size === size);
+        if (found && found["#text"]) return found["#text"];
+      }
+      return a.image[a.image.length - 1]["#text"];
+    })()
   }));
 }
 
@@ -146,7 +190,7 @@ async function searchBooks(query) {
       name: b.title,
       author: b.author_name?.[0] || "",
       meta: b.author_name?.[0] || "",
-      thumb: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+      thumb: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-L.jpg` : null,
       subjects: (b.subject || []).slice(0, 5)
     }));
   } catch (err) {
@@ -216,7 +260,8 @@ async function selectPick(type, item) {
   const metaEl = document.getElementById(`${type}-meta`);
 
   if (enrichedItem.thumb) {
-    coverEl.innerHTML = `<img src="${enrichedItem.thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`;
+    coverEl.innerHTML = `<img src="${enrichedItem.thumb}" alt="">`;
+    coverEl.classList.add("selected-cover");
   }
   nameEl.textContent = enrichedItem.name;
   metaEl.textContent = enrichedItem.meta;
@@ -262,14 +307,18 @@ document.getElementById("book-next").addEventListener("click", async () => {
   document.getElementById("book-next").disabled = true;
 
   const displayName = document.getElementById("display-name-input").value.trim() || currentUser.displayName || "Anonymous";
+  const photoUrl = (window.__getProfilePhoto ? window.__getProfilePhoto() : null) || currentUser.photoURL || "";
+
+  const inviteTag = sessionStorage.getItem("inviteTag") || "creative-computing-s26";
 
   try {
     await setDoc(doc(db, "users", currentUser.uid), {
       uid: currentUser.uid,
       name: displayName,
       email: currentUser.email,
-      photo: currentUser.photoURL,
+      photo: photoUrl,
       picks: picks,
+      communities: [inviteTag],
       onboarded: true,
       createdAt: new Date().toISOString()
     });

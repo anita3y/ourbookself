@@ -6,7 +6,7 @@
   <title>Our Bookshelf — Discover</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="style.css?v=2.0">
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body class="discover-page">
@@ -16,35 +16,54 @@
     <div class="nav-right">
       <button class="nav-link" onclick="window.location.href='onboarding.html'">edit shelf</button>
       <button class="sign-out-btn" id="sign-out-btn">sign out</button>
+      <button id="theme-toggle" title="Toggle dark/light mode">☀️</button>
     </div>
   </nav>
 
   <main class="discover-container">
-    <!-- Your own shelf card at the top -->
+    <!-- Your own shelf -->
     <section class="your-shelf-section">
       <h2 class="section-title">your shelf</h2>
-      <div class="shelf-card own-card" id="own-shelf-card">
-        <!-- Populated by JS -->
-        <div class="shelf-loading">loading your picks…</div>
+      <div id="own-shelf-wrapper">
+        <div class="shelf-card-container"><div class="shelf-card"><div class="shelf-loading">loading your picks…</div></div></div>
       </div>
     </section>
 
+    <!-- AI Recommendations for yourself -->
+    <section class="ai-recommendations-section" style="margin-bottom: 3rem;">
+      <div class="section-header" style="margin-bottom: 1rem;">
+        <div>
+          <h2 class="section-title">ai recommendations</h2>
+          <p class="section-sub">Discover new favorites based on your shelf.</p>
+        </div>
+        <button id="ask-ai-btn" style="background: var(--card-bg); backdrop-filter: var(--blur); border: 1px solid var(--card-border); padding: 0.5rem 1.25rem; font-size: 0.82rem; font-weight: 500; cursor: pointer; border-radius: 50px; color: var(--text-dark); box-shadow: var(--shadow); transition: all 0.2s; font-family: inherit;">✨ Ask AI</button>
+      </div>
+      <div id="ai-recommendation-wrapper" style="display: none;"></div>
+    </section>
+
+    <!-- Community -->
     <section class="community-section">
       <div class="section-header">
         <div>
           <h2 class="section-title">the community</h2>
-          <p class="section-sub">See how your taste compares to everyone else.</p>
+          <div class="community-tabs-row" style="margin-top: 8px;">
+            <div id="community-tabs" class="community-tabs"></div>
+            <div class="community-actions-divider"></div>
+            <button id="create-community-btn" class="community-pill-btn" title="Create New Community"><span>＋</span> New</button>
+            <button id="invite-community-btn" class="community-pill-btn" title="Copy Invite Link"><span>🔗</span> Invite</button>
+          </div>
+          <p class="section-sub" style="margin-top: 8px;">
+            See how your taste compares. <button id="taste-info-btn" class="info-btn">i</button>
+          </p>
         </div>
         <div class="view-toggle">
-          <button class="toggle-btn active" id="view-list">List View</button>
-          <button class="toggle-btn" id="view-map">Taste Map</button>
+          <button class="toggle-btn active" id="view-list">List</button>
+          <button class="toggle-btn" id="view-map">Map</button>
         </div>
       </div>
-      
+
       <div id="list-view">
-        <div class="discover-feed" id="discover-feed">
-          <!-- Populated by JS -->
-        </div>
+        <div id="discover-feed"></div>
       </div>
 
       <div id="map-view" class="hidden">
@@ -53,6 +72,48 @@
     </section>
   </main>
 
+  <!-- HOW IT WORKS MODAL -->
+  <div id="info-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button id="close-info-btn" class="modal-close">×</button>
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">How Taste Matching Works</h3>
+      <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-mid); margin-bottom: 0.8rem;">
+        Our matchmaking AI evaluates the underlying genres, eras, themes, and emotional resonance of your favorite media to calculate your vibe compatibility with others in your community.
+      </p>
+      <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-mid);">
+        Even if you haven't picked the same exact titles, the AI looks for deeper aesthetic overlap to help you find your people!
+      </p>
+    </div>
+  </div>
+
+  <!-- CREATE COMMUNITY MODAL -->
+  <div id="create-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <button class="modal-close" id="create-close">×</button>
+      <h2 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 0.5rem;">Create a Community</h2>
+      <p style="font-size: 0.85rem; color: var(--text-mid); margin-bottom: 1.5rem; line-height: 1.5;">Invite friends or a class to compare tastes together in a private group.</p>
+      <input type="text" id="community-name-input" placeholder="e.g. Design Squad" style="width: 100%; padding: 10px 14px; border: 1px solid var(--card-border); border-radius: var(--radius-sm); font-size: 0.95rem; margin-bottom: 1rem; background: var(--bg); color: var(--text-dark); font-family: inherit;">
+      <button id="submit-create-btn" style="width: 100%; padding: 12px; background: var(--text-dark); color: var(--bg); border: none; border-radius: var(--radius-sm); font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit;">Create & Get Invite Link</button>
+      <div id="create-msg" style="margin-top: 10px; font-size: 0.82rem; color: var(--match-high); font-weight: 500; line-height: 1.5;"></div>
+    </div>
+  </div>
+
   <script type="module" src="discover.js"></script>
+
+  <!-- THEME TOGGLE SCRIPT -->
+  <script>
+    const toggle = document.getElementById("theme-toggle");
+    const saved = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+    toggle.textContent = saved === "dark" ? "☀️" : "🌙";
+
+    toggle.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme");
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("theme", next);
+      toggle.textContent = next === "dark" ? "☀️" : "🌙";
+    });
+  </script>
 </body>
 </html>

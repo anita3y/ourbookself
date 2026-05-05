@@ -6,7 +6,12 @@
   <title>Our Bookshelf — Share Your Taste</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="style.css?v=2.0">
+  <script>
+    // Restore theme before paint to avoid flash
+    const _t = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", _t);
+  </script>
 </head>
 <body class="landing-page">
 
@@ -63,15 +68,22 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    // Capture invite tag
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteTag = urlParams.get('c');
+    if (inviteTag) {
+      sessionStorage.setItem("inviteTag", inviteTag);
+    }
+
     // If already logged in, redirect appropriately
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists() && userDoc.data().onboarded) {
-            window.location.href = "discover.html";
+            window.location.href = `discover.html${inviteTag ? '?c=' + inviteTag : ''}`;
           } else {
-            window.location.href = "onboarding.html";
+            window.location.href = `onboarding.html${inviteTag ? '?c=' + inviteTag : ''}`;
           }
         } catch (err) {
           // Firestore not set up yet or network error — go to onboarding
